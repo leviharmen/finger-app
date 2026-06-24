@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Finger Pick" />
+  <title>Finger Pick</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0d0d1a;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    #app {
+      width: 100vw;
+      height: 100vh;
+      background: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+    #instruction {
+      color: rgba(255,255,255,0.55);
+      font-size: 18px;
+      text-align: center;
+      pointer-events: none;
+      z-index: 10;
+      padding: 0 2rem;
+      line-height: 1.8;
+      transition: opacity 0.4s;
+    }
+    #instruction span {
+      font-size: 14px;
+      color: rgba(255,255,255,0.28);
+    }
+    #finger-area { position: absolute; inset: 0; }
+    .dot {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(1);
+      pointer-events: none;
+      transition: opacity 0.5s, transform 0.25s;
+    }
+    .dot.highlighted {
+      transform: translate(-50%, -50%) scale(1.45);
+      box-shadow: 0 0 0 10px rgba(255,255,255,0.18), 0 0 0 22px rgba(255,255,255,0.06);
+    }
+    .dot.eliminated {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.3);
+      transition: opacity 0.5s, transform 0.5s;
+    }
+    .dot.loser-pulse {
+      animation: loserpulse 0.6s ease-in-out infinite alternate;
+    }
+    @keyframes loserpulse {
+      from { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 8px rgba(255,255,255,0.12); }
+      to   { transform: translate(-50%, -50%) scale(1.5);  box-shadow: 0 0 0 16px rgba(255,255,255,0.05); }
+    }
+    #status {
+      position: absolute;
+      bottom: 48px;
+      left: 0; right: 0;
+      text-align: center;
+      color: rgba(255,255,255,0.38);
+      font-size: 14px;
+      pointer-events: none;
+      z-index: 10;
+      letter-spacing: 0.04em;
+    }
+    #counter {
+      position: absolute;
+      top: 24px; right: 24px;
+      color: rgba(255,255,255,0.28);
+      font-size: 14px;
+      z-index: 10;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="finger-area"></div>
+  <div id="counter"></div>
+  <p id="instruction">Place your fingers<br><span>Everyone put a finger on the screen</span></p>
+  <div id="status"></div>
+</div>
+
+<script>
+const COLORS = ['#e94560','#7b2fff','#16c79a','#e8a838','#1089ff','#e84393','#ff6b35','#00c9a7'];
+
+const app         = document.getElementById('app');
+const area        = document.getElementById('finger-area');
+const instruction = document.getElementById('instruction');
+const status      = document.getElementById('status');
+const counter     = document.getElementById('counter');
+
+const BG_BASE  = [13, 13, 26];
+const BG_LIGHT = [28, 28, 50];
+const BG_DARK  = [6,  6,  12];
+
+let fingers       = [];
+let lastId        = null;
+let autoPickTimer = null;
+let cancelTimer   = null;
+let bgFlickerInt  = null;
+let resetTimer    = null;
+let picking       = false;
+let showingResult = false;
+
+function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+function setAppBg(r, g, b) { app.style.background = 'rgb('+r+','+g+','+b+')'; }
+
+function stopBgFlicker() {
+  clearInterval(bgFlickerInt);
+  bgFlickerInt = null;
+  app.style.transition = 'background 0.5s';
+  setAppBg(...BG_BASE);
+}
+function startBgFlicker() {
+  app.style.transition = 'background 0.2s';
+  bgFlickerInt = setInterval(() => {
+    const shift = Math.random() < 0.5 ? BG_LIGHT : BG_DARK;
+    const t = Math.random() * 0.3;
+    setAppBg(lerp(BG_BASE[0],shift[0],t), lerp(BG_BASE[1],shift[1],t), lerp(BG_BASE[2],shift[2],t));
+  }, 200);
+}
+
+function fullReset() {
+  clearTimeout(autoPickTimer);
+  clearTimeout(cancelTimer);
+  clearTimeout(resetTimer);
+  stopBgFlicker();
+  fingers.forEach(f => f.dot.remove());
+  fingers = [];
+  lastId = null;
+  picking = false;
+  showingResult = false;
+  instruction.style.display = 'block';
+  instruction.style.opacity = '1';
+  status.textContent = '';
+  counter.textContent = '';
+}
+
+function scheduleAutoPick() {
+  clearTimeout(autoPickTimer);
+  if (fingers.length >= 2) {
+    autoPickTimer = setTimeout(() => {
+      const animDuration = 3000 + Math.random() * 4000;
+      doPick(animDuration);
+    }, 3000);
+  }
+}
+
+function updateUI() {
+  const n = fingers.length;
+  if (n === 0) {
+    instruction.style.display = 'block';
+    instruction.style.opacity = '1';
+    counter.textContent = '';
+  } else {
+    instruction.style.opacity = '0';
+    setTimeout(() => { if (fingers.length > 0) instruction.style.display = 'none'; }, 400);
+    counter.textContent = n + (n === 1 ? ' finger' : ' fingers');
+  }
+}
+
+function addFinger(x, y, id) {
+  if (picking) return;
+
+  if (showingResult) {
+    fullReset();
+    const color = COLORS[0];
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.left = x + 'px';
+    dot.style.top  = y + 'px';
+    dot.style.background = color;
+    area.appendChild(dot);
+    fingers.push({id, x, y, index: 1, color, dot});
+    lastId = id;
+    updateUI();
+    status.textContent = 'Need at least 2 fingers';
+    return;
+  }
+
+  if (fingers.find(f => f.id === id)) return;
+  clearTimeout(cancelTimer);
+
+  const idx   = fingers.length;
+  const color = COLORS[idx % COLORS.length];
+  const dot   = document.createElement('div');
+  dot.className = 'dot';
+  dot.style.left = x + 'px';
+  dot.style.top  = y + 'px';
+  dot.style.background = color;
+  area.appendChild(dot);
+  fingers.push({id, x, y, index: idx + 1, color, dot});
+  lastId = id;
+
+  if (fingers.length >= 2) {
+    status.textContent = '';
+    scheduleAutoPick();
+  } else {
+    status.textContent = 'Need at least 2 fingers';
+  }
+
+  updateUI();
+}
+
+function removeFinger(id) {
+  if (picking) return;
+  const f = fingers.find(f => f.id === id);
+  if (!f) return;
+  f.dot.remove();
+  fingers = fingers.filter(f => f.id !== id);
+  fingers.forEach((f, i) => f.index = i + 1);
+  lastId = fingers.length ? fingers[fingers.length - 1].id : null;
+
+  clearTimeout(autoPickTimer);
+
+  if (fingers.length === 0) {
+    status.textContent = '';
+    cancelTimer = setTimeout(() => {
+      if (fingers.length === 0 && !picking && !showingResult) fullReset();
+    }, 3000);
+  } else if (fingers.length === 1) {
+    status.textContent = 'Need at least 2 fingers';
+  }
+
+  updateUI();
+}
+
+function doPick(animDuration) {
+  clearTimeout(autoPickTimer);
+  if (fingers.length < 2 || picking) return;
+  picking = true;
+  status.textContent = '';
+
+  const eligible = fingers.filter(f => f.id !== lastId);
+  const loser    = eligible[Math.floor(Math.random() * eligible.length)];
+
+  const startInterval = 280;
+  const endInterval   = 700;
+  let elapsed = 0;
+  let currentHighlight = -1;
+
+  startBgFlicker();
+
+  function easeInterval(t) {
+    const p = t / animDuration;
+    return startInterval + (endInterval - startInterval) * (p * p);
+  }
+
+  function highlight(idx) {
+    fingers.forEach((f, i) => {
+      f.dot.classList.remove('highlighted');
+      if (i === idx) f.dot.classList.add('highlighted');
+    });
+  }
+
+  function step() {
+    const interval = easeInterval(elapsed);
+    elapsed += interval;
+    if (elapsed < animDuration) {
+      let next;
+      do { next = Math.floor(Math.random() * fingers.length); }
+      while (next === currentHighlight && fingers.length > 1);
+      currentHighlight = next;
+      highlight(currentHighlight);
+      setTimeout(step, interval);
+    } else {
+      const loserIdx = fingers.findIndex(f => f.id === loser.id);
+      highlight(loserIdx);
+      stopBgFlicker();
+
+      setTimeout(() => {
+        fingers.forEach(f => {
+          f.dot.classList.remove('highlighted');
+          if (f.id !== loser.id) {
+            f.dot.classList.add('eliminated');
+          } else {
+            f.dot.classList.add('loser-pulse');
+          }
+        });
+
+        setTimeout(() => {
+          showingResult = true;
+          status.textContent = 'Place a finger to play again';
+          resetTimer = setTimeout(() => {
+            if (showingResult) fullReset();
+          }, 8000);
+        }, 600);
+      }, 400);
+    }
+  }
+
+  step();
+}
+
+area.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const rect = area.getBoundingClientRect();
+  Array.from(e.changedTouches).forEach(t => {
+    addFinger(t.clientX - rect.left, t.clientY - rect.top, 'touch_' + t.identifier);
+  });
+}, {passive: false});
+
+area.addEventListener('touchend', e => {
+  e.preventDefault();
+  Array.from(e.changedTouches).forEach(t => removeFinger('touch_' + t.identifier));
+}, {passive: false});
+</script>
+</body>
+</html>
