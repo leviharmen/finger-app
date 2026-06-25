@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzFhMWEyZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwZjM0NjAiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzYiIGZpbGw9InVybCgjYmcpIi8+CiAgPHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjE0MCIgcng9IjI0IiBmaWxsPSJ3aGl0ZSIvPgogIDwhLS0gZG9wcGVsc3RlZW4gNSAtLT4KICA8Y2lyY2xlIGN4PSI1NSIgY3k9IjU1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgogIDxjaXJjbGUgY3g9IjEyNSIgY3k9IjU1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgogIDxjaXJjbGUgY3g9IjkwIiBjeT0iOTAiIHI9IjEzIiBmaWxsPSIjMWExYTJlIi8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSIxMjUiIHI9IjEzIiBmaWxsPSIjMWExYTJlIi8+CiAgPGNpcmNsZSBjeD0iMTI1IiBjeT0iMTI1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgo8L3N2Zz4=">
     <title>Aapje Gooien</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -327,7 +328,7 @@
                     rolling[index] = false;
                     die.classList.remove('locked');
                     checkCombination();
-                }, 350);
+                }, 200);
             }
         }, 50);
     }
@@ -548,30 +549,6 @@
         document.getElementById('screenStart').classList.add('active');
     }
 
-    // App icon voor iPhone beginscherm
-    (function() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 180;
-        canvas.height = 180;
-        const ctx = canvas.getContext('2d');
-
-        const grad = ctx.createLinearGradient(0, 0, 180, 180);
-        grad.addColorStop(0, '#1a1a2e');
-        grad.addColorStop(1, '#0f3460');
-        ctx.fillStyle = grad;
-        ctx.roundRect(0, 0, 180, 180, 36);
-        ctx.fill();
-
-        ctx.font = '110px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🎲', 90, 95);
-
-        const link = document.createElement('link');
-        link.rel = 'apple-touch-icon';
-        link.href = canvas.toDataURL('image/png');
-        document.head.appendChild(link);
-    })();
 </script>
 </body>
 </html>
