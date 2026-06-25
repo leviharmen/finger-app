@@ -3,7 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iYmciIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzFhMWEyZSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwZjM0NjAiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMzYiIGZpbGw9InVybCgjYmcpIi8+CiAgPHJlY3QgeD0iMjAiIHk9IjIwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjE0MCIgcng9IjI0IiBmaWxsPSJ3aGl0ZSIvPgogIDwhLS0gZG9wcGVsc3RlZW4gNSAtLT4KICA8Y2lyY2xlIGN4PSI1NSIgY3k9IjU1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgogIDxjaXJjbGUgY3g9IjEyNSIgY3k9IjU1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgogIDxjaXJjbGUgY3g9IjkwIiBjeT0iOTAiIHI9IjEzIiBmaWxsPSIjMWExYTJlIi8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSIxMjUiIHI9IjEzIiBmaWxsPSIjMWExYTJlIi8+CiAgPGNpcmNsZSBjeD0iMTI1IiBjeT0iMTI1IiByPSIxMyIgZmlsbD0iIzFhMWEyZSIvPgo8L3N2Zz4=">
+    <script>
+    (function() {
+        const c = document.createElement('canvas');
+        c.width = c.height = 180;
+        const ctx = c.getContext('2d');
+        function rr(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x+r, y);
+            ctx.arcTo(x+w, y, x+w, y+h, r);
+            ctx.arcTo(x+w, y+h, x, y+h, r);
+            ctx.arcTo(x, y+h, x, y, r);
+            ctx.arcTo(x, y, x+w, y, r);
+            ctx.closePath();
+        }
+        // Achtergrond
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, 180, 180);
+
+        // Isometrische kubus vertices
+        const T=[90,18], L=[40,47], R=[140,47], M=[90,76], BL=[40,138], BR=[140,138], B=[90,167];
+
+        function poly(pts, fill) {
+            ctx.beginPath();
+            ctx.moveTo(...pts[0]);
+            pts.slice(1).forEach(p => ctx.lineTo(...p));
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        poly([T, R, M, L], '#EEEEF4');   // bovenkant
+        poly([L, M, B, BL], '#CBCBD8');  // linkerkant
+        poly([R, BR, B, M], '#B0B0C4');  // rechterkant
+
+        function dot(x, y, r, color) {
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+            ctx.fillStyle = color; ctx.fill();
+        }
+
+        // Bovenkant: 1 rode stip
+        dot(90, 47, 8, '#E8344A');
+        // Linkerkant: 2 paarse stippen
+        dot(57, 74, 7, '#5C4A9A');
+        dot(73, 112, 7, '#5C4A9A');
+        // Rechterkant: 4 paarse stippen
+        dot(107, 62, 7, '#5C4A9A');
+        dot(126, 73, 7, '#5C4A9A');
+        dot(109, 112, 7, '#5C4A9A');
+        dot(128, 123, 7, '#5C4A9A');
+        const l = document.createElement('link');
+        l.rel = 'apple-touch-icon';
+        l.href = c.toDataURL('image/png');
+        document.head.appendChild(l);
+    })();
+    </script>
     <title>Aapje Gooien</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
