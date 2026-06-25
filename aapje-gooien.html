@@ -334,6 +334,8 @@
     }
 
     function checkCombination() {
+        if (rolling[0] || rolling[1]) return;
+
         const [a, b] = [...vals].sort((x, y) => x - y);
 
         if (a === 1 && b === 1) hadDoubleOne = true;
@@ -539,6 +541,15 @@
         renderDie(0, 1);
         renderDie(1, 1);
     }
+
+    // Twee vingers tegelijk = beide dobbelstenen gooien
+    document.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            rollDie(0);
+            rollDie(1);
+        }
+    }, { passive: false });
 
     function goBack() {
         hideOverlay();
