@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Aapje Gooien</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            margin-bottom: 0.4rem;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 3.5rem;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        .dice-area {
+            display: flex;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .die-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .die {
+            width: 140px;
+            height: 140px;
+            background: white;
+            border-radius: 26px;
+            cursor: pointer;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.9);
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .die:active:not(.locked) { transform: scale(0.92); }
+
+        .die.rolling {
+            animation: shake 0.55s ease;
+        }
+
+        @keyframes shake {
+            0%   { transform: rotate(0deg) scale(1); }
+            15%  { transform: rotate(-14deg) scale(0.88); }
+            30%  { transform: rotate(14deg) scale(0.88); }
+            50%  { transform: rotate(-9deg) scale(0.94); }
+            68%  { transform: rotate(9deg) scale(0.94); }
+            82%  { transform: rotate(-4deg); }
+            92%  { transform: rotate(4deg); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+
+        .die svg { width: 100%; height: 100%; }
+
+        .die-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.35);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Overlay */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s;
+            backdrop-filter: blur(6px);
+        }
+
+        .overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .overlay-icon {
+            animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg);   opacity: 1; }
+        }
+
+        .overlay-name {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-top: 1.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 30px rgba(255,215,0,0.6);
+            letter-spacing: 3px;
+        }
+
+        .overlay-tap {
+            margin-top: 2.5rem;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        /* Screens */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .screen.active { display: flex; }
+
+        /* Start screen */
+        .start-title {
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-shadow: 0 3px 15px rgba(0,0,0,0.5);
+            margin-bottom: 0.5rem;
+        }
+        .start-subtitle {
+            color: rgba(255,255,255,0.4);
+            font-size: 1rem;
+            letter-spacing: 2px;
+            margin-bottom: 3.5rem;
+        }
+        .start-dice-preview {
+            font-size: 5rem;
+            margin-bottom: 3rem;
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50%       { transform: translateY(-12px); }
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #e94560, #c0392b);
+            color: white;
+            border: none;
+            padding: 18px 52px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 25px rgba(233,69,96,0.5);
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-start:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(233,69,96,0.4);
+        }
+
+        /* Game screen back button */
+        .btn-back {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            letter-spacing: 1px;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s;
+            z-index: 10;
+        }
+        .btn-back:active { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div class="screen active" id="screenStart">
+    <div class="start-dice-preview">🎲🎲</div>
+    <h1 class="start-title">Aapje Gooien</h1>
+    <p class="start-subtitle">Het dobbelspel</p>
+    <button class="btn-start" onclick="startGame()">SPEEL</button>
+</div>
+
+<!-- GAME SCREEN -->
+<div class="screen" id="screenGame">
+<button class="btn-back" onclick="goBack()">← Terug</button>
+<h1>🎲 Aapje Gooien</h1>
+<p class="subtitle">Tik op een dobbelsteen om te gooien</p>
+
+<div class="dice-area">
+    <div class="die-wrapper">
+        <div class="die" id="die0" onclick="rollDie(0)">
+            <svg viewBox="0 0 100 100" id="svg0"></svg>
+        </div>
+        <span class="die-label">Dobbel 1</span>
+    </div>
+    <div class="die-wrapper">
+        <div class="die" id="die1" onclick="rollDie(1)">
+            <svg viewBox="0 0 100 100" id="svg1"></svg>
+        </div>
+        <span class="die-label">Dobbel 2</span>
+    </div>
+</div>
+
+</div> <!-- end screenGame -->
+
+<div class="overlay" id="overlay" onclick="hideOverlay()">
+    <div class="overlay-icon" id="overlayIcon"></div>
+    <div class="overlay-name" id="overlayName"></div>
+    <div class="overlay-tap" id="overlayTap">Tik om te sluiten</div>
+</div>
+
+<script>
+    // Dot positions per value [cx, cy]
+    const DOTS = {
+        1: [[50,50]],
+        2: [[28,28],[72,72]],
+        3: [[28,28],[50,50],[72,72]],
+        4: [[28,28],[72,28],[28,72],[72,72]],
+        5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
+        6: [[28,22],[72,22],[28,50],[72,50],[28,78],[72,78]],
+    };
+
+    let vals = [1, 1];
+    let rolling = [false, false];
+    let hadDoubleOne = false;
+    let autoCloseTimer = null;
+
+    function renderDie(index, val) {
+        const svg = document.getElementById(`svg${index}`);
+        svg.innerHTML = DOTS[val].map(([cx, cy]) =>
+            `<circle cx="${cx}" cy="${cy}" r="9" fill="#1a1a2e"/>`
+        ).join('');
+    }
+
+    function rollDie(index) {
+        if (rolling[index]) return;
+        rolling[index] = true;
+
+        const die = document.getElementById(`die${index}`);
+        die.classList.add('rolling', 'locked');
+
+        let ticks = 0;
+        const total = 12;
+        const interval = setInterval(() => {
+            vals[index] = Math.ceil(Math.random() * 6);
+            renderDie(index, vals[index]);
+            ticks++;
+            if (ticks >= total) {
+                clearInterval(interval);
+                die.classList.remove('rolling');
+                setTimeout(() => {
+                    rolling[index] = false;
+                    die.classList.remove('locked');
+                    checkCombination();
+                }, 350);
+            }
+        }, 50);
+    }
+
+    function checkCombination() {
+        const [a, b] = [...vals].sort((x, y) => x - y);
+
+        if (a === 1 && b === 1) hadDoubleOne = true;
+
+        if (a === 3 && b === 4) {
+            showOverlay(getAjaxShirt(), 'Nouri!');
+        } else if (a === 1 && b === 2) {
+            showOverlay(getMonkey(), 'Aapje!');
+        } else if (a === 1 && b === 1) {
+            showOverlay(getKingCrown(), 'Koning!');
+        } else if (a === 2 && b === 2 && hadDoubleOne) {
+            showOverlay(getQueenCrown(), 'Koningin!');
+        } else if (a === 1 && b === 3) {
+            showOverlay(getBeer(), 'Uitdelen!');
+        }
+    }
+
+    function showOverlay(iconHTML, name, autoClose = null) {
+        if (autoCloseTimer) clearTimeout(autoCloseTimer);
+
+        const overlay = document.getElementById('overlay');
+        const icon    = document.getElementById('overlayIcon');
+        const tap     = document.getElementById('overlayTap');
+
+        document.getElementById('overlayName').textContent = name;
+        icon.innerHTML = iconHTML;
+        tap.textContent = autoClose ? '' : 'Tik om te sluiten';
+
+        // Re-trigger pop animation
+        icon.style.animation = 'none';
+        icon.offsetHeight;
+        icon.style.animation = '';
+
+        overlay.classList.add('visible');
+
+        if (autoClose) {
+            autoCloseTimer = setTimeout(hideOverlay, autoClose);
+        }
+    }
+
+    function hideOverlay() {
+        document.getElementById('overlay').classList.remove('visible');
+    }
+
+    // ── SVG ICONS ────────────────────────────────────────────────────────────
+
+    function getAjaxShirt() {
+        return `<svg viewBox="0 0 200 230" width="190" height="220" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ajax shirt: white with red center stripe -->
+            <!-- Body -->
+            <path d="M35 65 L20 130 L20 210 L180 210 L180 130 L165 65 Z" fill="white" stroke="#ccc" stroke-width="1.5" stroke-linejoin="round"/>
+            <!-- Red center stripe -->
+            <path d="M82 65 L82 210 L118 210 L118 65 Z" fill="#CC0000"/>
+            <!-- Left sleeve -->
+            <path d="M35 65 L5 100 L22 112 L48 80 Z" fill="white" stroke="#ccc" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M35 65 L5 100 L14 106 L42 72 Z" fill="#CC0000"/>
+            <!-- Right sleeve -->
+            <path d="M165 65 L195 100 L178 112 L152 80 Z" fill="white" stroke="#ccc" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M165 65 L195 100 L186 106 L158 72 Z" fill="#CC0000"/>
+            <!-- V-collar -->
+            <path d="M82 65 Q100 95 118 65" fill="none" stroke="#CC0000" stroke-width="5" stroke-linecap="round"/>
+            <!-- Number 34 -->
+            <text x="100" y="162" text-anchor="middle" font-size="48" font-weight="900"
+                  fill="white" font-family="Arial Black, Arial, sans-serif"
+                  stroke="black" stroke-width="3" paint-order="stroke">34</text>
+        </svg>`;
+    }
+
+    function getMonkey() {
+        return `<svg viewBox="0 0 200 210" width="185" height="195" xmlns="http://www.w3.org/2000/svg">
+            <!-- Ears -->
+            <circle cx="38" cy="108" r="30" fill="#7B4F2E"/>
+            <circle cx="162" cy="108" r="30" fill="#7B4F2E"/>
+            <circle cx="38" cy="108" r="19" fill="#C48050"/>
+            <circle cx="162" cy="108" r="19" fill="#C48050"/>
+            <!-- Head -->
+            <ellipse cx="100" cy="100" rx="72" ry="67" fill="#7B4F2E"/>
+            <!-- Face muzzle -->
+            <ellipse cx="100" cy="122" rx="44" ry="36" fill="#C48050"/>
+            <!-- Eyes whites -->
+            <circle cx="76" cy="90" r="15" fill="white"/>
+            <circle cx="124" cy="90" r="15" fill="white"/>
+            <!-- Pupils -->
+            <circle cx="79" cy="92" r="9" fill="#1a1a1a"/>
+            <circle cx="127" cy="92" r="9" fill="#1a1a1a"/>
+            <!-- Eye shine -->
+            <circle cx="82" cy="89" r="3.5" fill="white"/>
+            <circle cx="130" cy="89" r="3.5" fill="white"/>
+            <!-- Nostrils -->
+            <ellipse cx="93" cy="118" rx="5" ry="4" fill="#5a2e0e"/>
+            <ellipse cx="107" cy="118" rx="5" ry="4" fill="#5a2e0e"/>
+            <!-- Big smile -->
+            <path d="M78 132 Q100 154 122 132" stroke="#5a2e0e" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <!-- Eyebrows -->
+            <path d="M63 76 Q77 68 91 76" stroke="#4a2a0a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <path d="M109 76 Q123 68 137 76" stroke="#4a2a0a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <!-- Top of head hair tuft -->
+            <path d="M70 40 Q100 18 130 40" stroke="#4a2a0a" stroke-width="8" fill="none" stroke-linecap="round"/>
+        </svg>`;
+    }
+
+    function getKingCrown() {
+        return `<svg viewBox="0 0 200 180" width="195" height="170" xmlns="http://www.w3.org/2000/svg">
+            <!-- Base band -->
+            <rect x="18" y="118" width="164" height="48" rx="9" fill="#FFD700"/>
+            <rect x="18" y="118" width="164" height="48" rx="9" fill="none" stroke="#B8860B" stroke-width="3"/>
+            <!-- Crown body -->
+            <polygon points="18,118 18,52 62,84 100,18 138,84 182,52 182,118" fill="#FFD700"/>
+            <polygon points="18,118 18,52 62,84 100,18 138,84 182,52 182,118" fill="none" stroke="#B8860B" stroke-width="3" stroke-linejoin="round"/>
+            <!-- Inner shading -->
+            <polygon points="28,118 28,68 62,90 100,32 138,90 172,68 172,118" fill="rgba(255,200,0,0.4)"/>
+            <!-- Top gems -->
+            <circle cx="100" cy="44" r="13" fill="#DC143C"/>
+            <circle cx="100" cy="44" r="7"  fill="#FF6B6B"/>
+            <circle cx="57"  cy="90" r="10" fill="#1E90FF"/>
+            <circle cx="57"  cy="90" r="5"  fill="#87CEEB"/>
+            <circle cx="143" cy="90" r="10" fill="#32CD32"/>
+            <circle cx="143" cy="90" r="5"  fill="#90EE90"/>
+            <!-- Base gems -->
+            <circle cx="55"  cy="143" r="9" fill="#DC143C"/>
+            <circle cx="100" cy="143" r="9" fill="#9400D3"/>
+            <circle cx="145" cy="143" r="9" fill="#FF8C00"/>
+            <!-- Shine lines -->
+            <line x1="38" y1="70" x2="46" y2="50" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round"/>
+            <line x1="100" y1="22" x2="100" y2="33" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round"/>
+            <line x1="162" y1="70" x2="154" y2="50" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round"/>
+        </svg>`;
+    }
+
+    function getQueenCrown() {
+        return `<svg viewBox="0 0 200 195" width="195" height="185" xmlns="http://www.w3.org/2000/svg">
+            <!-- Base band - rose gold -->
+            <rect x="18" y="128" width="164" height="48" rx="10" fill="#E8A4BC"/>
+            <rect x="18" y="128" width="164" height="48" rx="10" fill="none" stroke="#C06882" stroke-width="2.5"/>
+            <!-- Crown body - elegant curves -->
+            <path d="M18,128 L18,68 Q32,90 52,74 Q68,60 84,74 Q96,88 100,56 Q104,88 116,74 Q132,60 148,74 Q168,90 182,68 L182,128 Z" fill="#E8A4BC"/>
+            <path d="M18,128 L18,68 Q32,90 52,74 Q68,60 84,74 Q96,88 100,56 Q104,88 116,74 Q132,60 148,74 Q168,90 182,68 L182,128 Z" fill="none" stroke="#C06882" stroke-width="2.5" stroke-linejoin="round"/>
+            <!-- Pearls on base -->
+            <circle cx="47"  cy="152" r="8" fill="white" stroke="#ddd" stroke-width="1"/>
+            <circle cx="73"  cy="152" r="8" fill="white" stroke="#ddd" stroke-width="1"/>
+            <circle cx="100" cy="152" r="8" fill="white" stroke="#ddd" stroke-width="1"/>
+            <circle cx="127" cy="152" r="8" fill="white" stroke="#ddd" stroke-width="1"/>
+            <circle cx="153" cy="152" r="8" fill="white" stroke="#ddd" stroke-width="1"/>
+            <!-- Center gem - pink diamond -->
+            <polygon points="100,60 111,76 100,88 89,76" fill="#FF69B4"/>
+            <polygon points="100,60 111,76 100,88 89,76" fill="none" stroke="#C04878" stroke-width="1.5"/>
+            <polygon points="100,66 107,76 100,83 93,76" fill="#FFB6D9"/>
+            <!-- Side gems -->
+            <circle cx="52"  cy="84" r="9" fill="#DA70D6"/>
+            <circle cx="52"  cy="84" r="5" fill="#EEB0EE"/>
+            <circle cx="148" cy="84" r="9" fill="#DA70D6"/>
+            <circle cx="148" cy="84" r="5" fill="#EEB0EE"/>
+            <!-- Sparkles -->
+            <text x="24"  y="52" font-size="17" fill="#FFD700" font-family="sans-serif">✦</text>
+            <text x="160" y="52" font-size="17" fill="#FFD700" font-family="sans-serif">✦</text>
+            <text x="91"  y="42" font-size="13" fill="#FFD700" font-family="sans-serif">✦</text>
+        </svg>`;
+    }
+
+    function getBeer() {
+        return `<svg viewBox="0 0 230 200" width="215" height="185" xmlns="http://www.w3.org/2000/svg">
+            <!-- Beer mug body -->
+            <rect x="40" y="72" width="95" height="112" rx="7" fill="#F5A623"/>
+            <!-- Light reflection on mug -->
+            <rect x="50" y="80" width="15" height="95" rx="5" fill="rgba(255,255,255,0.25)"/>
+            <!-- Foam on top -->
+            <ellipse cx="87" cy="70" rx="52" ry="22" fill="white"/>
+            <ellipse cx="68" cy="62" rx="22" ry="15" fill="white"/>
+            <ellipse cx="98" cy="58" rx="26" ry="17" fill="white"/>
+            <ellipse cx="115" cy="64" rx="18" ry="13" fill="white"/>
+            <!-- Handle -->
+            <path d="M135 96 Q172 96 172 132 Q172 168 135 168" stroke="#C07800" stroke-width="18" fill="none" stroke-linecap="round"/>
+            <path d="M135 96 Q165 96 165 132 Q165 168 135 168" stroke="#F5A623" stroke-width="9"  fill="none" stroke-linecap="round"/>
+            <!-- Bubbles -->
+            <circle cx="72"  cy="125" r="5.5" fill="rgba(255,255,255,0.45)"/>
+            <circle cx="98"  cy="148" r="4"   fill="rgba(255,255,255,0.45)"/>
+            <circle cx="112" cy="112" r="6.5" fill="rgba(255,255,255,0.45)"/>
+            <circle cx="60"  cy="158" r="3.5" fill="rgba(255,255,255,0.35)"/>
+            <!-- Mug outline -->
+            <rect x="40" y="72" width="95" height="112" rx="7" fill="none" stroke="#C07800" stroke-width="3"/>
+
+            <!-- Pointing finger/hand - pointing away from beer (to the right) -->
+            <g transform="translate(148, 80)">
+                <!-- Wrist/palm -->
+                <rect x="0" y="18" width="38" height="32" rx="9" fill="#FDBCB4" stroke="#E8967A" stroke-width="1.5"/>
+                <!-- Index finger pointing right -->
+                <rect x="8" y="-8" width="36" height="18" rx="9" fill="#FDBCB4" stroke="#E8967A" stroke-width="1.5"/>
+                <!-- Fingernail -->
+                <rect x="32" y="-5" width="10" height="12" rx="4" fill="#FFD0C0"/>
+                <!-- Knuckle lines on palm -->
+                <line x1="4"  y1="26" x2="36" y2="26" stroke="#E8967A" stroke-width="1.5" stroke-linecap="round"/>
+                <line x1="4"  y1="35" x2="36" y2="35" stroke="#E8967A" stroke-width="1.5" stroke-linecap="round"/>
+                <!-- Curled fingers suggestion (bumps on top of palm) -->
+                <path d="M4,18 Q12,8 22,18" stroke="#E8967A" stroke-width="1.5" fill="rgba(253,188,180,0.6)"/>
+                <path d="M20,18 Q28,8 38,18" stroke="#E8967A" stroke-width="1.5" fill="rgba(253,188,180,0.6)"/>
+            </g>
+        </svg>`;
+    }
+
+    function startGame() {
+        document.getElementById('screenStart').classList.remove('active');
+        document.getElementById('screenGame').classList.add('active');
+        renderDie(0, 1);
+        renderDie(1, 1);
+    }
+
+    function goBack() {
+        hideOverlay();
+        hadDoubleOne = false;
+        vals = [1, 1];
+        rolling = [false, false];
+        document.getElementById('screenGame').classList.remove('active');
+        document.getElementById('screenStart').classList.add('active');
+    }
+</script>
+</body>
+</html>
